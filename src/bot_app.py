@@ -145,9 +145,14 @@ async def quantity_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, q
 
     product = context.user_data['temp_product']
     
+    # Calculate current quantity in cart for this product
+    current_cart_qty = sum(item['adet'] for item in context.user_data.get('sepet', []) if item['id'] == product['id'])
+
     # Check stock
-    if qty > product['stock']:
-        text = f"⚠️ Yetersiz stok! Maksimum {product['stock']} adet alabilirsiniz.\nLütfen tekrar adet seçin:"
+    if qty + current_cart_qty > product['stock']:
+        remaining = product['stock'] - current_cart_qty
+        if remaining < 0: remaining = 0
+        text = f"⚠️ Yetersiz stok! Stokta {product['stock']} adet var. Sepetinizde zaten {current_cart_qty} adet var.\nEn fazla {remaining} adet daha ekleyebilirsiniz."
         
         # Re-show quantity buttons so user is not stuck
         keyboard = [
@@ -361,49 +366,58 @@ async def payment_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     await query.answer()
     
-    # SAVE TO DB
-    customer_info = context.user_data['customer_info']
-    
-    order_id = db.create_order(
-        customer_name=customer_info, 
-        phone="", # Parsing phone is hard without strict format
-        delivery_method=context.user_data['delivery'], 
-        cart_items=context.user_data['sepet'],
-        coupon_code=context.user_data.get('coupon_code'),
-        discount_amount=context.user_data.get('discount_amount', 0)
-    )
-    
-    # Notify Admin
-    admin_id = db.get_setting("admin_id")
-    if admin_id:
-        try:
-            cart_summary = "\n".join([f"- {i['adet']}x {i['ad']}" for i in context.user_data['sepet']])
-            final_total = sum(i['fiyat'] for i in context.user_data['sepet']) - context.user_data.get('discount_amount', 0)
-            
-            admin_msg = (
-                f"🚨 **YENİ SİPARİŞ! #{order_id}**\n\n"
-                f"{cart_summary}\n\n"
-                f"👤 {customer_info}\n"
-                f"🚚 {context.user_data['delivery']}\n"
-                f"💰 {final_total} TL"
-            )
-            if context.user_data.get('coupon_code'):
-                admin_msg += f"\n🎟️ Kupon: {context.user_data['coupon_code']}"
-                
-            await context.bot.send_message(chat_id=admin_id, text=admin_msg)
-        except Exception as e:
-            logger.error(f"Failed to send admin message: {e}")
+    try:
+        # SAVE TO DB
+        customer_info = context.user_data['customer_info']
 
-    # Don't delete previous message (IBAN etc). Send NEW message.
-    # Add restart button
-    keyboard = [[InlineKeyboardButton("🔄 Yeni Sipariş Ver", callback_data="add_more")]]
-            
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="🎉 Siparişiniz ve ödeme bildiriminiz alındı! Teşekkür ederiz.\nSiparişiniz hazırlanacaktır.",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-    return CART_ACTIONS # Return to state that handles "add_more" (re-mapped to start menu)
+        order_id = db.create_order(
+            customer_name=customer_info,
+            phone="", # Parsing phone is hard without strict format
+            delivery_method=context.user_data['delivery'],
+            cart_items=context.user_data['sepet'],
+            coupon_code=context.user_data.get('coupon_code'),
+            discount_amount=context.user_data.get('discount_amount', 0)
+        )
+
+        # Notify Admin
+        admin_id = db.get_setting("admin_id")
+        if admin_id:
+            try:
+                cart_summary = "\n".join([f"- {i['adet']}x {i['ad']}" for i in context.user_data['sepet']])
+                final_total = sum(i['fiyat'] for i in context.user_data['sepet']) - context.user_data.get('discount_amount', 0)
+                
+                admin_msg = (
+                    f"🚨 **YENİ SİPARİŞ! #{order_id}**\n\n"
+                    f"{cart_summary}\n\n"
+                    f"👤 {customer_info}\n"
+                    f"🚚 {context.user_data['delivery']}\n"
+                    f"💰 {final_total} TL"
+                )
+                if context.user_data.get('coupon_code'):
+                    admin_msg += f"\n🎟️ Kupon: {context.user_data['coupon_code']}"
+
+                await context.bot.send_message(chat_id=admin_id, text=admin_msg)
+            except Exception as e:
+                logger.error(f"Failed to send admin message: {e}")
+
+        # Don't delete previous message (IBAN etc). Send NEW message.
+        # Add restart button
+        keyboard = [[InlineKeyboardButton("🔄 Yeni Sipariş Ver", callback_data="add_more")]]
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="🎉 Siparişiniz ve ödeme bildiriminiz alındı! Teşekkür ederiz.\nSiparişiniz hazırlanacaktır.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return CART_ACTIONS # Return to state that handles "add_more" (re-mapped to start menu)
+
+    except Exception as e:
+        logger.error(f"Error in payment_received: {e}")
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="⚠️ Sipariş oluşturulurken bir hata oluştu. Lütfen tekrar deneyin veya bizimle iletişime geçin."
+        )
+        return PAYMENT_WAIT
 
 async def cancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("İşlem iptal edildi.")

@@ -160,6 +160,9 @@ class ProductsFrame(ctk.CTkFrame):
         
         self.btn_add = ctk.CTkButton(self.ctrl_frame, text="+ Yeni Ürün Ekle", command=self.open_add_popup, fg_color="green")
         self.btn_add.pack(side="right", padx=10)
+
+        self.btn_refresh = ctk.CTkButton(self.ctrl_frame, text="Yenile", command=lambda: self.load_products(self.cat_var.get()))
+        self.btn_refresh.pack(side="right", padx=10)
         
         # Scrollable Frame for products
         self.scroll_frame = ctk.CTkScrollableFrame(self)
@@ -167,27 +170,11 @@ class ProductsFrame(ctk.CTkFrame):
         
         self.product_widgets = []
         self.load_products("Kahve")
-        self.auto_refresh()
 
     def destroy(self):
         self.is_destroyed = True
         super().destroy()
 
-    def auto_refresh(self):
-        if self.is_destroyed:
-            return
-        
-        focused_widget = self.focus_get()
-        if isinstance(focused_widget, ctk.CTkEntry) and str(focused_widget).startswith(str(self)):
-            pass
-        else:
-            try:
-               self.load_products(self.cat_var.get())
-            except Exception:
-               pass
-           
-        self.after(3000, self.auto_refresh)
-        
     def load_products(self, category):
         for widget in self.scroll_frame.winfo_children():
             widget.destroy()
