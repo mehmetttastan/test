@@ -96,6 +96,18 @@ class DatabaseManager:
             )
         ''')
         
+        # --- MIGRATIONS ---
+        # Ensure 'coupon_code' and 'discount_amount' exist in 'orders' (for old DBs)
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN coupon_code TEXT")
+        except sqlite3.OperationalError:
+            pass # Column likely exists
+
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass # Column likely exists
+
         conn.commit()
         self._seed_data(cursor)
         conn.commit()
