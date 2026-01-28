@@ -38,6 +38,30 @@ def get_cart_text(cart):
     text += f"\n💰 **Toplam Tutar: {total} TL**"
     return text
 
+async def show_category_products(update: Update, context: ContextTypes.DEFAULT_TYPE, category: str) -> int:
+    query = update.callback_query
+    products = db.get_products_by_category(category)
+
+    if not products:
+        await query.edit_message_text(f"⚠️ {category} kategorisinde şu an ürün bulunmamaktadır.",
+                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri Dön", callback_data="back")]]))
+        return CATEGORY_SELECT # Actually logic needs to handle back
+
+    keyboard = []
+    for p in products:
+        # p is a dict: {'id', 'name', 'price', ...}
+        if p['stock'] > 0:
+            btn_text = f"{p['name']} - {p['price']} TL"
+            keyboard.append([InlineKeyboardButton(btn_text, callback_data=str(p['id']))])
+        else:
+            keyboard.append([InlineKeyboardButton(f"{p['name']} (Tükendi)", callback_data="ignore")])
+
+    keyboard.append([InlineKeyboardButton("🔙 Kategori Seçimine Dön", callback_data="back_cat")])
+
+    await query.edit_message_text(f"✨ **{category}** ürünleri:\nLütfen seçiminizi yapın:",
+                                  reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+    return PRODUCT_SELECT
+
 # --- HANDLERS ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -71,27 +95,7 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     category = query.data
     context.user_data['current_category'] = category
     
-    products = db.get_products_by_category(category)
-    
-    if not products:
-        await query.edit_message_text(f"⚠️ {category} kategorisinde şu an ürün bulunmamaktadır.", 
-                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri Dön", callback_data="back")]]))
-        return CATEGORY_SELECT # Actually logic needs to handle back
-
-    keyboard = []
-    for p in products:
-        # p is a dict: {'id', 'name', 'price', ...}
-        if p['stock'] > 0:
-            btn_text = f"{p['name']} - {p['price']} TL"
-            keyboard.append([InlineKeyboardButton(btn_text, callback_data=str(p['id']))])
-        else:
-            keyboard.append([InlineKeyboardButton(f"{p['name']} (Tükendi)", callback_data="ignore")])
-            
-    keyboard.append([InlineKeyboardButton("🔙 Kategori Seçimine Dön", callback_data="back_cat")])
-    
-    await query.edit_message_text(f"✨ **{category}** ürünleri:\nLütfen seçiminizi yapın:", 
-                                  reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
-    return PRODUCT_SELECT
+    return await show_category_products(update, context, category)
 
 async def product_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -151,25 +155,32 @@ async def quantity_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, q
     # Check stock
     if qty + current_cart_qty > product['stock']:
         remaining = product['stock'] - current_cart_qty
-        if remaining < 0: remaining = 0
-        text = f"⚠️ Yetersiz stok! Stokta {product['stock']} adet var. Sepetinizde zaten {current_cart_qty} adet var.\nEn fazla {remaining} adet daha ekleyebilirsiniz."
-        
-        # Re-show quantity buttons so user is not stuck
-        keyboard = [
-            [
-                InlineKeyboardButton("1", callback_data="1"),
-                InlineKeyboardButton("2", callback_data="2"),
-                InlineKeyboardButton("3", callback_data="3"),
-                InlineKeyboardButton("4", callback_data="4"),
-                InlineKeyboardButton("5", callback_data="5")
-            ],
-            [InlineKeyboardButton("🔙 Vazgeç", callback_data="cancel_item")]
-        ]
+        if remaining <= 0:
+            remaining = 0
+            text = f"⚠️ **Yetersiz Stok!**\nSepetinizde bu üründen {current_cart_qty} adet var ve stok limitine ({product['stock']}) ulaştınız.\nDaha fazla ekleyemezsiniz."
+            # Only show cancel or view cart options
+            keyboard = [
+                [InlineKeyboardButton("🔙 Ürün Listesine Dön", callback_data="cancel_item")],
+                [InlineKeyboardButton("🛒 Sepete Git", callback_data="view_cart")]
+            ]
+        else:
+            text = f"⚠️ Yetersiz stok! Stokta {product['stock']} adet var. Sepetinizde zaten {current_cart_qty} adet var.\nEn fazla {remaining} adet daha ekleyebilirsiniz."
+            # Show quantity buttons
+            keyboard = [
+                [
+                    InlineKeyboardButton("1", callback_data="1"),
+                    InlineKeyboardButton("2", callback_data="2"),
+                    InlineKeyboardButton("3", callback_data="3"),
+                    InlineKeyboardButton("4", callback_data="4"),
+                    InlineKeyboardButton("5", callback_data="5")
+                ],
+                [InlineKeyboardButton("🔙 Vazgeç", callback_data="cancel_item")]
+            ]
         
         if update.callback_query:
-            await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+            await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
         else:
-            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
         return QUANTITY_SELECT
 
     total_price = product['price'] * qty
@@ -199,11 +210,7 @@ async def quantity_button(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = update.callback_query
     await query.answer()
     if query.data == "cancel_item":
-        # Go back to product list
-        # Simulate category selection again
-        # We need the update object to look like category selection
-        update.callback_query.data = context.user_data['current_category']
-        return await category_selected(update, context)
+        return await show_category_products(update, context, context.user_data['current_category'])
         
     return await quantity_handler(update, context, query.data)
 
