@@ -453,6 +453,11 @@ async def payment_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             except Exception as e:
                 logger.error(f"Failed to send admin message: {e}")
 
+        # Clear cart after successful order
+        context.user_data['sepet'] = []
+        context.user_data['coupon_code'] = None
+        context.user_data['discount_amount'] = 0
+
         # Don't delete previous message (IBAN etc). Send NEW message.
         # Add restart button
         keyboard = [[InlineKeyboardButton("🔄 Yeni Sipariş Ver", callback_data="add_more")]]
