@@ -119,7 +119,7 @@ async def product_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     data = query.data
     if data == "back_cat":
-        return await start(update, context)
+        return await show_menu(update, context)
     if data == "ignore":
         return PRODUCT_SELECT
         
