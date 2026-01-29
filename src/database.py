@@ -319,6 +319,15 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
+    def delete_order(self, order_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        # Delete items first (though FK cascade usually handles this if enabled, let's be explicit)
+        cursor.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
+        cursor.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+        conn.commit()
+        conn.close()
+
     def get_product_sales_report(self):
         conn = self.get_connection()
         cursor = conn.cursor()

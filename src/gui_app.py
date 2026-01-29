@@ -65,6 +65,9 @@ class OrdersFrame(ctk.CTkFrame):
         self.btn_deliver = ctk.CTkButton(self.btn_frame, text="Teslim Edildi", command=self.mark_delivered, fg_color="#D35B58") # Red-ish
         self.btn_deliver.pack(side="left", padx=5)
         
+        self.btn_delete = ctk.CTkButton(self.btn_frame, text="Sil", command=self.delete_order, fg_color="red", width=60)
+        self.btn_delete.pack(side="left", padx=5)
+
         self.btn_refresh = ctk.CTkButton(self.btn_frame, text="Yenile", command=self.refresh_data)
         self.btn_refresh.pack(side="right", padx=5)
         
@@ -138,6 +141,14 @@ class OrdersFrame(ctk.CTkFrame):
         oid = self.get_selected_id()
         if oid:
             self.db.update_order_status(oid, "Delivered")
+            self.refresh_data()
+
+    def delete_order(self):
+        oid = self.get_selected_id()
+        if not oid: return
+
+        if messagebox.askyesno("Onay", "Bu siparişi silmek istediğinize emin misiniz?"):
+            self.db.delete_order(oid)
             self.refresh_data()
 
 class ProductsFrame(ctk.CTkFrame):
@@ -500,6 +511,9 @@ class HistoryFrame(ctk.CTkFrame):
         h_frame.pack(fill="x", pady=2)
         ctk.CTkLabel(h_frame, text="SON TESLİM EDİLEN SİPARİŞLER", font=("Arial", 12, "bold")).pack(side="left", padx=10)
 
+        self.btn_delete = ctk.CTkButton(h_frame, text="Sil", command=self.delete_order, height=25, width=60, fg_color="red")
+        self.btn_delete.pack(side="right", padx=5)
+
         self.btn_edit = ctk.CTkButton(h_frame, text="Düzenle", command=self.open_edit_popup, height=25, width=100)
         self.btn_edit.pack(side="right", padx=5)
 
@@ -611,6 +625,14 @@ class HistoryFrame(ctk.CTkFrame):
                 messagebox.showerror("Hata", "Tutar sayı olmalı.")
 
         ctk.CTkButton(top, text="Kaydet", command=save).pack(pady=20)
+
+    def delete_order(self):
+        oid = self.get_selected_id()
+        if not oid: return
+
+        if messagebox.askyesno("Onay", "Bu geçmiş siparişi silmek istediğinize emin misiniz?"):
+            self.db.delete_order(oid)
+            self.refresh_data()
 
     def open_edit_popup(self):
         oid = self.get_selected_id()
