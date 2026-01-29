@@ -33,12 +33,11 @@ class OrdersFrame(ctk.CTkFrame):
         style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
         style.map("Treeview", background=[('selected', '#1f538d')])
 
-        columns = ("id", "customer", "phone", "delivery", "total", "status", "date")
+        columns = ("id", "customer", "delivery", "total", "status", "date")
         self.tree = ttk.Treeview(self.tree_frame, columns=columns, show="headings", height=15)
         
         self.tree.heading("id", text="ID")
         self.tree.heading("customer", text="Müşteri")
-        self.tree.heading("phone", text="Telefon")
         self.tree.heading("delivery", text="Teslimat")
         self.tree.heading("total", text="Tutar")
         self.tree.heading("status", text="Durum")
@@ -96,7 +95,7 @@ class OrdersFrame(ctk.CTkFrame):
                 # Show discounted total if any
                 total_disp = f"{order['total_price']} TL"
                 self.tree.insert("", "end", values=(
-                    order['id'], order['customer_name'], order['phone'], 
+                    order['id'], order['customer_name'],
                     order['delivery_method'], total_disp, 
                     order['status'], order['created_at']
                 ), tags=(tag,))
@@ -359,6 +358,7 @@ class ReportsFrame(ctk.CTkFrame):
         
         self.tabview.add("Gelir Dağılımı")
         self.tabview.add("Günlük Satış")
+        self.tabview.add("Ürün Raporu")
         
         self.btn_refresh = ctk.CTkButton(self, text="Grafikleri Yenile", command=self.draw_charts)
         self.btn_refresh.pack(pady=5)
@@ -371,6 +371,7 @@ class ReportsFrame(ctk.CTkFrame):
         # Clear old
         for widget in self.tabview.tab("Gelir Dağılımı").winfo_children(): widget.destroy()
         for widget in self.tabview.tab("Günlük Satış").winfo_children(): widget.destroy()
+        for widget in self.tabview.tab("Ürün Raporu").winfo_children(): widget.destroy()
         
         # 1. Pie Chart (Coffee vs Fruit)
         coffee = self.db.get_total_income("Kahve")
@@ -407,6 +408,26 @@ class ReportsFrame(ctk.CTkFrame):
         else:
             ctk.CTkLabel(self.tabview.tab("Günlük Satış"), text="Henüz veri yok.").pack(pady=20)
 
+        # 3. Product Report Table
+        products_data = self.db.get_product_sales_report()
+        if products_data:
+            cols = ("product", "qty", "revenue")
+            tree = ttk.Treeview(self.tabview.tab("Ürün Raporu"), columns=cols, show="headings", height=15)
+            tree.heading("product", text="Ürün Adı")
+            tree.heading("qty", text="Satılan Adet")
+            tree.heading("revenue", text="Toplam Gelir")
+
+            tree.column("product", width=200)
+            tree.column("qty", width=100, anchor="center")
+            tree.column("revenue", width=100, anchor="center")
+            tree.pack(fill="both", expand=True, padx=5, pady=5)
+
+            for p in products_data:
+                # p is tuple: (name, qty, revenue)
+                tree.insert("", "end", values=(p[0], p[1], f"{p[2]} TL"))
+        else:
+            ctk.CTkLabel(self.tabview.tab("Ürün Raporu"), text="Henüz veri yok.").pack(pady=20)
+
 class HistoryFrame(ctk.CTkFrame):
     def __init__(self, master, db: DatabaseManager):
         super().__init__(master)
@@ -436,6 +457,9 @@ class HistoryFrame(ctk.CTkFrame):
         self.act_frame.pack(fill="x", padx=10)
         self.btn_refresh = ctk.CTkButton(self.act_frame, text="Yenile", command=self.refresh_data)
         self.btn_refresh.pack(side="left", padx=10, pady=10)
+
+        self.btn_add_hist = ctk.CTkButton(self.act_frame, text="Geçmiş Sipariş Ekle", command=self.open_add_history_popup)
+        self.btn_add_hist.pack(side="left", padx=10, pady=10)
 
         # Split Frame
         self.split_frame = ctk.CTkFrame(self)
@@ -475,7 +499,11 @@ class HistoryFrame(ctk.CTkFrame):
         h_frame = ctk.CTkFrame(self.orders_frame, fg_color="transparent")
         h_frame.pack(fill="x", pady=2)
         ctk.CTkLabel(h_frame, text="SON TESLİM EDİLEN SİPARİŞLER", font=("Arial", 12, "bold")).pack(side="left", padx=10)
-        ctk.CTkButton(h_frame, text="Seçili Sipariş Detayı", command=self.show_details, height=25, width=150).pack(side="right", padx=10)
+
+        self.btn_edit = ctk.CTkButton(h_frame, text="Düzenle", command=self.open_edit_popup, height=25, width=100)
+        self.btn_edit.pack(side="right", padx=5)
+
+        ctk.CTkButton(h_frame, text="Seçili Sipariş Detayı", command=self.show_details, height=25, width=150).pack(side="right", padx=5)
         
         self.tree_orders = ttk.Treeview(self.orders_frame, columns=("id", "cust", "total", "date"), show="headings", height=5)
         self.tree_orders.heading("id", text="ID")
@@ -548,6 +576,83 @@ class HistoryFrame(ctk.CTkFrame):
             if order.get('coupon_code'):
                 details += f"\n🎟️ Kupon: {order['coupon_code']} (-{order['discount_amount']} TL)"
             messagebox.showinfo("Geçmiş Sipariş Detayı", details)
+
+    def open_add_history_popup(self):
+        top = ctk.CTkToplevel(self)
+        top.title("Geçmiş Sipariş Ekle")
+        top.geometry("300x300")
+
+        ctk.CTkLabel(top, text="Müşteri Adı:").pack(pady=5)
+        ent_cust = ctk.CTkEntry(top)
+        ent_cust.pack(pady=5)
+
+        ctk.CTkLabel(top, text="Toplam Tutar:").pack(pady=5)
+        ent_total = ctk.CTkEntry(top)
+        ent_total.pack(pady=5)
+
+        ctk.CTkLabel(top, text="Tarih (YYYY-MM-DD HH:MM:SS):").pack(pady=5)
+        ent_date = ctk.CTkEntry(top)
+        ent_date.insert(0, self.db.get_connection().execute("SELECT datetime('now', 'localtime')").fetchone()[0])
+        ent_date.pack(pady=5)
+
+        def save():
+            try:
+                cust = ent_cust.get()
+                total = float(ent_total.get())
+                date = ent_date.get()
+                if not cust:
+                    messagebox.showerror("Hata", "Müşteri adı giriniz.")
+                    return
+                self.db.create_historical_order(cust, total, date)
+                messagebox.showinfo("Başarılı", "Eklendi.")
+                self.refresh_data()
+                top.destroy()
+            except ValueError:
+                messagebox.showerror("Hata", "Tutar sayı olmalı.")
+
+        ctk.CTkButton(top, text="Kaydet", command=save).pack(pady=20)
+
+    def open_edit_popup(self):
+        oid = self.get_selected_id()
+        if not oid: return
+
+        # Get order data
+        all_orders = self.db.get_orders("Delivered")
+        order = next((o for o in all_orders if o['id'] == oid), None)
+        if not order: return
+
+        top = ctk.CTkToplevel(self)
+        top.title(f"Sipariş Düzenle #{oid}")
+        top.geometry("300x300")
+
+        ctk.CTkLabel(top, text="Müşteri Adı:").pack(pady=5)
+        ent_cust = ctk.CTkEntry(top)
+        ent_cust.insert(0, order['customer_name'])
+        ent_cust.pack(pady=5)
+
+        ctk.CTkLabel(top, text="Toplam Tutar:").pack(pady=5)
+        ent_total = ctk.CTkEntry(top)
+        ent_total.insert(0, str(order['total_price']))
+        ent_total.pack(pady=5)
+
+        ctk.CTkLabel(top, text="Tarih:").pack(pady=5)
+        ent_date = ctk.CTkEntry(top)
+        ent_date.insert(0, order['created_at'])
+        ent_date.pack(pady=5)
+
+        def save():
+            try:
+                cust = ent_cust.get()
+                total = float(ent_total.get())
+                date = ent_date.get()
+                self.db.update_order_details(oid, cust, total, date)
+                messagebox.showinfo("Başarılı", "Güncellendi.")
+                self.refresh_data()
+                top.destroy()
+            except ValueError:
+                messagebox.showerror("Hata", "Tutar sayı olmalı.")
+
+        ctk.CTkButton(top, text="Kaydet", command=save).pack(pady=20)
 
     def open_expense_popup(self):
         top = ctk.CTkToplevel(self)

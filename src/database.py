@@ -298,6 +298,45 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
+    def create_historical_order(self, customer_name, total_price, created_at):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO orders (customer_name, total_price, status, created_at, delivery_method)
+            VALUES (?, ?, 'Delivered', ?, 'Geçmiş Ekleme')
+        ''', (customer_name, total_price, created_at))
+        conn.commit()
+        conn.close()
+
+    def update_order_details(self, order_id, customer_name, total_price, created_at):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE orders
+            SET customer_name=?, total_price=?, created_at=?
+            WHERE id=?
+        ''', (customer_name, total_price, created_at, order_id))
+        conn.commit()
+        conn.close()
+
+    def get_product_sales_report(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT
+                oi.product_name,
+                SUM(oi.quantity) as total_qty,
+                SUM(oi.price * oi.quantity) as total_revenue
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status = 'Delivered'
+            GROUP BY oi.product_name
+            ORDER BY total_revenue DESC
+        ''')
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
     def get_total_income(self, category_filter=None):
         conn = self.get_connection()
         cursor = conn.cursor()
