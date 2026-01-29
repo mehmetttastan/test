@@ -66,26 +66,42 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['sepet'] = []
-    return await show_menu(update, context)
 
-async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     welcome_msg = db.get_setting("welcome_message")
     if not welcome_msg:
-        welcome_msg = "Hoşgeldiniz! Lütfen kategori seçin."
+        welcome_msg = "Hoşgeldiniz!"
+
+    keyboard = [[InlineKeyboardButton("🛍️ SİPARİŞ OLUŞTUR", callback_data="start_order")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if update.message:
+        await update.message.reply_text(welcome_msg, reply_markup=reply_markup, parse_mode='Markdown')
+    else:
+        await update.callback_query.edit_message_text(welcome_msg, reply_markup=reply_markup, parse_mode='Markdown')
         
+    return CATEGORY_SELECT
+
+async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = [
         [InlineKeyboardButton("☕ Kahve Çeşitleri", callback_data="Kahve")],
         [InlineKeyboardButton("🍎 Kuru Meyve Çeşitleri", callback_data="Kuru Meyve")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    msg_text = f"{welcome_msg}\n\n👇 **Lütfen bir kategori seçin:**"
+    msg_text = "👇 **Lütfen bir kategori seçin:**"
     
     if update.message:
         await update.message.reply_text(msg_text, reply_markup=reply_markup, parse_mode='Markdown')
     else:
         await update.callback_query.edit_message_text(msg_text, reply_markup=reply_markup, parse_mode='Markdown')
         
+    return CATEGORY_SELECT
+
+async def start_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    if query.data == "start_order":
+        return await show_menu(update, context)
     return CATEGORY_SELECT
 
 async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -466,7 +482,10 @@ def create_bot_app():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            CATEGORY_SELECT: [CallbackQueryHandler(category_selected)],
+            CATEGORY_SELECT: [
+                CallbackQueryHandler(start_button_handler, pattern="^start_order$"),
+                CallbackQueryHandler(category_selected)
+            ],
             PRODUCT_SELECT: [CallbackQueryHandler(product_selected)],
             QUANTITY_SELECT: [
                 CallbackQueryHandler(quantity_button),
