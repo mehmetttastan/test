@@ -303,8 +303,14 @@ class CouponsFrame(ctk.CTkFrame):
         self.tree.pack(fill="both", expand=True)
         
         # Actions
-        self.btn_toggle = ctk.CTkButton(self, text="Aktif/Pasif Yap", command=self.toggle_coupon, fg_color="#D35B58")
-        self.btn_toggle.pack(pady=10)
+        self.act_frame = ctk.CTkFrame(self)
+        self.act_frame.pack(fill="x", padx=10, pady=10)
+
+        self.btn_toggle = ctk.CTkButton(self.act_frame, text="Aktif/Pasif Yap", command=self.toggle_coupon, fg_color="#D35B58")
+        self.btn_toggle.pack(side="left", padx=5)
+
+        self.btn_refresh = ctk.CTkButton(self.act_frame, text="Yenile", command=self.refresh_list)
+        self.btn_refresh.pack(side="right", padx=5)
         
         self.refresh_list()
         

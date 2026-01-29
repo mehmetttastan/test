@@ -211,11 +211,28 @@ async def quantity_button(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await query.answer()
     if query.data == "cancel_item":
         return await show_category_products(update, context, context.user_data['current_category'])
+
+    if query.data == "view_cart":
+        return await show_cart_screen(update, context)
         
     return await quantity_handler(update, context, query.data)
 
 async def quantity_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await quantity_handler(update, context, update.message.text)
+
+async def show_cart_screen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    cart_text = get_cart_text(context.user_data.get('sepet', []))
+    keyboard = [
+        [InlineKeyboardButton("➕ Ürün Ekle", callback_data="add_more")],
+        [InlineKeyboardButton("✅ Siparişi Tamamla", callback_data="checkout")],
+        [InlineKeyboardButton("🗑️ Sepeti Boşalt", callback_data="clear_cart")]
+    ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(cart_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+    else:
+        await update.message.reply_text(cart_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+    return CART_ACTIONS
 
 async def cart_actions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -225,14 +242,7 @@ async def cart_actions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return await show_menu(update, context)
         
     if query.data == "view_cart":
-        cart_text = get_cart_text(context.user_data['sepet'])
-        keyboard = [
-            [InlineKeyboardButton("➕ Ürün Ekle", callback_data="add_more")],
-            [InlineKeyboardButton("✅ Siparişi Tamamla", callback_data="checkout")],
-            [InlineKeyboardButton("🗑️ Sepeti Boşalt", callback_data="clear_cart")]
-        ]
-        await query.edit_message_text(cart_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
-        return CART_ACTIONS
+        return await show_cart_screen(update, context)
         
     if query.data == "clear_cart":
         context.user_data['sepet'] = []
@@ -288,13 +298,14 @@ async def coupon_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     coupon = db.get_coupon(code)
     
     msg_text = ""
+    is_valid = False
+
     if coupon and coupon['is_active']:
         if coupon['usage_limit'] > 0 and coupon['used_count'] >= coupon['usage_limit']:
              msg_text = "❌ Bu kuponun kullanım limiti dolmuş."
-             context.user_data['coupon_code'] = None
-             context.user_data['discount_amount'] = 0
         else:
             # Valid
+            is_valid = True
             total_price = sum(item['fiyat'] for item in context.user_data['sepet'])
             discount = (total_price * coupon['discount_percent']) / 100
             
@@ -304,11 +315,25 @@ async def coupon_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             msg_text = f"✅ **Kupon Uygulandı!**\n%{coupon['discount_percent']} indirim ({discount} TL) eklendi."
     else:
         msg_text = "❌ Geçersiz veya süresi dolmuş kupon kodu."
+
+    if is_valid:
+        await update.message.reply_text(msg_text, parse_mode='Markdown')
+        return await show_summary(update, context)
+    else:
+        # Invalid: Offer Retry or Continue
         context.user_data['coupon_code'] = None
         context.user_data['discount_amount'] = 0
         
-    await update.message.reply_text(msg_text, parse_mode='Markdown')
-    return await show_summary(update, context)
+        keyboard = [
+            [InlineKeyboardButton("🔄 Tekrar Dene", callback_data="yes_coupon")],
+            [InlineKeyboardButton("⏩ Kuponsuz Devam Et", callback_data="no_coupon")]
+        ]
+        await update.message.reply_text(
+            f"{msg_text}\n\nNe yapmak istersiniz?",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+        return COUPON_ASK
 
 async def show_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     cart_text = get_cart_text(context.user_data['sepet'])
@@ -446,7 +471,10 @@ def create_bot_app():
             GET_INFO: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_info)],
             DELIVERY_SELECT: [CallbackQueryHandler(delivery_select)],
             COUPON_ASK: [CallbackQueryHandler(coupon_ask)],
-            COUPON_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, coupon_input)],
+            COUPON_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, coupon_input),
+                CallbackQueryHandler(coupon_ask) # Allow handling Back/Retry buttons that map to coupon_ask logic
+            ],
             CONFIRM_ORDER: [CallbackQueryHandler(confirm_order)],
             PAYMENT_WAIT: [CallbackQueryHandler(payment_received)]
         },
