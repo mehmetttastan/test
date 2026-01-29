@@ -253,11 +253,16 @@ async def cart_actions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         if not context.user_data['sepet']:
             await query.answer("Sepetiniz boş!", show_alert=True)
             return CART_ACTIONS
-        await query.edit_message_text("👤 Lütfen **Ad, Soyad** ve **Telefon** numaranızı tek mesajda yazın:")
+        await query.edit_message_text("👤 Lütfen **Ad, Soyad** ve **Telefon** numaranızı tek mesajda yazın:\n_(İptal etmek için /cancel yazabilirsiniz)_", parse_mode='Markdown')
         return GET_INFO
 
 async def get_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['customer_info'] = update.message.text
+    text = update.message.text.strip()
+    if len(text) < 5:
+        await update.message.reply_text("⚠️ Girdiğiniz bilgi çok kısa. Lütfen Ad, Soyad ve Telefon numaranızı eksiksiz girin:\n_(İptal etmek için /cancel yazabilirsiniz)_", parse_mode='Markdown')
+        return GET_INFO
+
+    context.user_data['customer_info'] = text
     
     keyboard = [
         [InlineKeyboardButton("🏢 Şirkete Teslimat", callback_data="Şirket")],
