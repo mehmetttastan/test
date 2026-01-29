@@ -447,21 +447,47 @@ class HistoryFrame(ctk.CTkFrame):
         self.label = ctk.CTkLabel(self, text="Finansal Durum & Geçmiş", font=("Arial", 20, "bold"))
         self.label.pack(pady=10)
         
-        # Summary Frame
+        # Summary Frame (Redesigned)
         self.summary_frame = ctk.CTkFrame(self)
         self.summary_frame.pack(fill="x", padx=10, pady=10)
         
-        self.lbl_coffee = ctk.CTkLabel(self.summary_frame, text="Kahve Geliri: 0 TL")
-        self.lbl_coffee.grid(row=0, column=0, padx=20, pady=10)
-        
-        self.lbl_fruit = ctk.CTkLabel(self.summary_frame, text="Meyve Geliri: 0 TL")
-        self.lbl_fruit.grid(row=0, column=1, padx=20, pady=10)
-        
-        self.lbl_expense = ctk.CTkLabel(self.summary_frame, text="Giderler: 0 TL", text_color="red")
-        self.lbl_expense.grid(row=1, column=0, padx=20, pady=10)
-        
-        self.lbl_net = ctk.CTkLabel(self.summary_frame, text="NET KASA: 0 TL", font=("Arial", 16, "bold"), text_color="green")
-        self.lbl_net.grid(row=1, column=1, padx=20, pady=10)
+        # Grid layout for better organization
+        self.summary_frame.grid_columnconfigure(0, weight=1)
+        self.summary_frame.grid_columnconfigure(1, weight=1)
+        self.summary_frame.grid_columnconfigure(2, weight=1)
+
+        # Kahve Column
+        f_coffee = ctk.CTkFrame(self.summary_frame)
+        f_coffee.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        ctk.CTkLabel(f_coffee, text="☕ KAHVE", font=("Arial", 14, "bold")).pack(pady=2)
+        self.lbl_coffee_inc = ctk.CTkLabel(f_coffee, text="Gelir: 0 TL", text_color="green")
+        self.lbl_coffee_inc.pack()
+        self.lbl_coffee_exp = ctk.CTkLabel(f_coffee, text="Gider: 0 TL", text_color="red")
+        self.lbl_coffee_exp.pack()
+        self.lbl_coffee_net = ctk.CTkLabel(f_coffee, text="Net: 0 TL", font=("Arial", 12, "bold"))
+        self.lbl_coffee_net.pack(pady=2)
+
+        # Meyve Column
+        f_fruit = ctk.CTkFrame(self.summary_frame)
+        f_fruit.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        ctk.CTkLabel(f_fruit, text="🍎 MEYVE", font=("Arial", 14, "bold")).pack(pady=2)
+        self.lbl_fruit_inc = ctk.CTkLabel(f_fruit, text="Gelir: 0 TL", text_color="green")
+        self.lbl_fruit_inc.pack()
+        self.lbl_fruit_exp = ctk.CTkLabel(f_fruit, text="Gider: 0 TL", text_color="red")
+        self.lbl_fruit_exp.pack()
+        self.lbl_fruit_net = ctk.CTkLabel(f_fruit, text="Net: 0 TL", font=("Arial", 12, "bold"))
+        self.lbl_fruit_net.pack(pady=2)
+
+        # Total Column
+        f_total = ctk.CTkFrame(self.summary_frame)
+        f_total.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
+        ctk.CTkLabel(f_total, text="💰 GENEL DURUM", font=("Arial", 14, "bold")).pack(pady=2)
+        self.lbl_total_inc = ctk.CTkLabel(f_total, text="Top. Gelir: 0 TL", text_color="green")
+        self.lbl_total_inc.pack()
+        self.lbl_total_exp = ctk.CTkLabel(f_total, text="Top. Gider: 0 TL", text_color="red")
+        self.lbl_total_exp.pack()
+        self.lbl_net = ctk.CTkLabel(f_total, text="NET KASA: 0 TL", font=("Arial", 16, "bold"))
+        self.lbl_net.pack(pady=5)
         
         # Actions
         self.act_frame = ctk.CTkFrame(self)
@@ -479,13 +505,19 @@ class HistoryFrame(ctk.CTkFrame):
         # Left: Kahve Tablosu
         self.left_frame = ctk.CTkFrame(self.split_frame)
         self.left_frame.pack(side="left", fill="both", expand=True, padx=5)
-        ctk.CTkLabel(self.left_frame, text="KAHVE GİDER LİSTESİ", font=("Arial", 14, "bold")).pack(pady=5)
         
-        cols = ("date", "desc", "amount")
+        h_coffee = ctk.CTkFrame(self.left_frame, fg_color="transparent")
+        h_coffee.pack(fill="x", pady=5)
+        ctk.CTkLabel(h_coffee, text="KAHVE GİDERLERİ", font=("Arial", 14, "bold")).pack(side="left", padx=5)
+        ctk.CTkButton(h_coffee, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_coffee), width=100, fg_color="#D35B58", height=25).pack(side="right", padx=5)
+
+        cols = ("id", "date", "desc", "amount")
         self.tree_coffee = ttk.Treeview(self.left_frame, columns=cols, show="headings")
+        self.tree_coffee.heading("id", text="ID")
         self.tree_coffee.heading("date", text="Tarih")
         self.tree_coffee.heading("desc", text="Açıklama")
         self.tree_coffee.heading("amount", text="Tutar")
+        self.tree_coffee.column("id", width=30)
         self.tree_coffee.column("date", width=80)
         self.tree_coffee.column("amount", width=60)
         self.tree_coffee.pack(fill="both", expand=True)
@@ -493,12 +525,18 @@ class HistoryFrame(ctk.CTkFrame):
         # Right: Meyve Tablosu
         self.right_frame = ctk.CTkFrame(self.split_frame)
         self.right_frame.pack(side="right", fill="both", expand=True, padx=5)
-        ctk.CTkLabel(self.right_frame, text="MEYVE GİDER LİSTESİ", font=("Arial", 14, "bold")).pack(pady=5)
+
+        h_fruit = ctk.CTkFrame(self.right_frame, fg_color="transparent")
+        h_fruit.pack(fill="x", pady=5)
+        ctk.CTkLabel(h_fruit, text="MEYVE GİDERLERİ", font=("Arial", 14, "bold")).pack(side="left", padx=5)
+        ctk.CTkButton(h_fruit, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_fruit), width=100, fg_color="#D35B58", height=25).pack(side="right", padx=5)
         
         self.tree_fruit = ttk.Treeview(self.right_frame, columns=cols, show="headings")
+        self.tree_fruit.heading("id", text="ID")
         self.tree_fruit.heading("date", text="Tarih")
         self.tree_fruit.heading("desc", text="Açıklama")
         self.tree_fruit.heading("amount", text="Tutar")
+        self.tree_fruit.column("id", width=30)
         self.tree_fruit.column("date", width=80)
         self.tree_fruit.column("amount", width=60)
         self.tree_fruit.pack(fill="both", expand=True)
@@ -540,30 +578,59 @@ class HistoryFrame(ctk.CTkFrame):
         net_coffee = coffee_income - coffee_expenses
         net_fruit = fruit_income - fruit_expenses
         
-        self.lbl_coffee.configure(text=f"Kahve (Net): {net_coffee} TL\n(Gelir: {coffee_income} - Gider: {coffee_expenses})")
-        self.lbl_fruit.configure(text=f"Meyve (Net): {net_fruit} TL\n(Gelir: {fruit_income} - Gider: {fruit_expenses})")
-        
+        # Update Coffee Column
+        self.lbl_coffee_inc.configure(text=f"Gelir: {coffee_income} TL")
+        self.lbl_coffee_exp.configure(text=f"Gider: {coffee_expenses} TL")
+        self.lbl_coffee_net.configure(text=f"Net: {net_coffee} TL")
+        if net_coffee >= 0: self.lbl_coffee_net.configure(text_color="green")
+        else: self.lbl_coffee_net.configure(text_color="red")
+
+        # Update Fruit Column
+        self.lbl_fruit_inc.configure(text=f"Gelir: {fruit_income} TL")
+        self.lbl_fruit_exp.configure(text=f"Gider: {fruit_expenses} TL")
+        self.lbl_fruit_net.configure(text=f"Net: {net_fruit} TL")
+        if net_fruit >= 0: self.lbl_fruit_net.configure(text_color="green")
+        else: self.lbl_fruit_net.configure(text_color="red")
+
+        # Update Total Column
+        total_income = coffee_income + fruit_income
         total_expenses = coffee_expenses + fruit_expenses + general_expenses
-        self.lbl_expense.configure(text=f"Toplam Gider: {total_expenses} TL\n(Genel: {general_expenses})")
+        total_net = total_income - total_expenses
         
-        total_net = (coffee_income + fruit_income) - total_expenses
-        self.lbl_net.configure(text=f"GENEL NET: {total_net} TL")
+        self.lbl_total_inc.configure(text=f"Top. Gelir: {total_income} TL")
+        self.lbl_total_exp.configure(text=f"Top. Gider: {total_expenses} TL")
+        self.lbl_net.configure(text=f"NET KASA: {total_net} TL")
+        if total_net >= 0: self.lbl_net.configure(text_color="green")
+        else: self.lbl_net.configure(text_color="red")
         
         # Populate Coffee Expenses
         for item in self.tree_coffee.get_children(): self.tree_coffee.delete(item)
         for ex in self.db.get_expenses("Kahve"):
-            self.tree_coffee.insert("", "end", values=(ex['created_at'], ex['description'], f"{ex['amount']} TL"))
+            self.tree_coffee.insert("", "end", values=(ex['id'], ex['created_at'], ex['description'], f"{ex['amount']} TL"))
             
         # Populate Fruit Expenses
         for item in self.tree_fruit.get_children(): self.tree_fruit.delete(item)
         for ex in self.db.get_expenses("Kuru Meyve"):
-            self.tree_fruit.insert("", "end", values=(ex['created_at'], ex['description'], f"{ex['amount']} TL"))
+            self.tree_fruit.insert("", "end", values=(ex['id'], ex['created_at'], ex['description'], f"{ex['amount']} TL"))
             
         # Populate Delivered Orders
         for item in self.tree_orders.get_children(): self.tree_orders.delete(item)
         orders = self.db.get_orders("Delivered")
         for o in orders:
             self.tree_orders.insert("", "end", values=(o['id'], o['customer_name'], f"{o['total_price']} TL", o['created_at']))
+
+    def delete_expense(self, tree):
+        selected = tree.selection()
+        if not selected:
+            messagebox.showwarning("Uyarı", "Lütfen silinecek gideri seçin.")
+            return
+
+        item = tree.item(selected[0])
+        exp_id = item['values'][0]
+
+        if messagebox.askyesno("Onay", "Bu gideri silmek istediğinize emin misiniz?"):
+            self.db.delete_expense(exp_id)
+            self.refresh_data()
 
     def get_selected_id(self):
         selected = self.tree_orders.selection()

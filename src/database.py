@@ -372,6 +372,13 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
+    def delete_expense(self, expense_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+        conn.commit()
+        conn.close()
+
     def get_total_expenses(self, category_filter=None):
         conn = self.get_connection()
         cursor = conn.cursor()
