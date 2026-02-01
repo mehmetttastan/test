@@ -498,6 +498,9 @@ class HistoryFrame(ctk.CTkFrame):
         self.btn_add_hist = ctk.CTkButton(self.act_frame, text="Geçmiş Sipariş Ekle", command=self.open_add_history_popup)
         self.btn_add_hist.pack(side="left", padx=10, pady=10)
 
+        self.btn_add_expense = ctk.CTkButton(self.act_frame, text="Gider Ekle", command=self.open_expense_popup, fg_color="#D35B58")
+        self.btn_add_expense.pack(side="left", padx=10, pady=10)
+
         # Split Frame
         self.split_frame = ctk.CTkFrame(self)
         self.split_frame.pack(fill="both", expand=True, padx=5, pady=5)
@@ -661,7 +664,11 @@ class HistoryFrame(ctk.CTkFrame):
     def open_add_history_popup(self):
         top = ctk.CTkToplevel(self)
         top.title("Geçmiş Sipariş Ekle")
-        top.geometry("300x300")
+        top.geometry("300x350")
+
+        ctk.CTkLabel(top, text="Kategori:").pack(pady=5)
+        cat_var = ctk.StringVar(value="Kahve")
+        ctk.CTkOptionMenu(top, variable=cat_var, values=["Kahve", "Kuru Meyve"]).pack(pady=5)
 
         ctk.CTkLabel(top, text="Müşteri Adı:").pack(pady=5)
         ent_cust = ctk.CTkEntry(top)
@@ -681,10 +688,11 @@ class HistoryFrame(ctk.CTkFrame):
                 cust = ent_cust.get()
                 total = float(ent_total.get())
                 date = ent_date.get()
+                category = cat_var.get()
                 if not cust:
                     messagebox.showerror("Hata", "Müşteri adı giriniz.")
                     return
-                self.db.create_historical_order(cust, total, date)
+                self.db.create_historical_order(cust, total, date, category)
                 messagebox.showinfo("Başarılı", "Eklendi.")
                 self.refresh_data()
                 top.destroy()

@@ -298,13 +298,22 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-    def create_historical_order(self, customer_name, total_price, created_at):
+    def create_historical_order(self, customer_name, total_price, created_at, category_name="Diğer"):
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO orders (customer_name, total_price, status, created_at, delivery_method)
             VALUES (?, ?, 'Delivered', ?, 'Geçmiş Ekleme')
         ''', (customer_name, total_price, created_at))
+
+        order_id = cursor.lastrowid
+
+        # Insert a dummy item to ensure it appears in category totals
+        cursor.execute('''
+            INSERT INTO order_items (order_id, product_name, category_name, quantity, price)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (order_id, "Manuel Giriş", category_name, 1, total_price))
+
         conn.commit()
         conn.close()
 
