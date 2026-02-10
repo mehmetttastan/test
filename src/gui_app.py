@@ -544,6 +544,25 @@ class HistoryFrame(ctk.CTkFrame):
         self.tree_fruit.column("amount", width=60)
         self.tree_fruit.pack(fill="both", expand=True)
         
+        # General Expenses Table (New)
+        self.gen_expense_frame = ctk.CTkFrame(self)
+        self.gen_expense_frame.pack(fill="x", padx=10, pady=5)
+
+        h_gen = ctk.CTkFrame(self.gen_expense_frame, fg_color="transparent")
+        h_gen.pack(fill="x", pady=5)
+        ctk.CTkLabel(h_gen, text="GENEL GİDERLER", font=("Arial", 14, "bold")).pack(side="left", padx=5)
+        ctk.CTkButton(h_gen, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_gen), width=100, fg_color="#D35B58", height=25).pack(side="right", padx=5)
+
+        self.tree_gen = ttk.Treeview(self.gen_expense_frame, columns=cols, show="headings", height=5)
+        self.tree_gen.heading("id", text="ID")
+        self.tree_gen.heading("date", text="Tarih")
+        self.tree_gen.heading("desc", text="Açıklama")
+        self.tree_gen.heading("amount", text="Tutar")
+        self.tree_gen.column("id", width=30)
+        self.tree_gen.column("date", width=80)
+        self.tree_gen.column("amount", width=60)
+        self.tree_gen.pack(fill="both", expand=True)
+
         # General Orders List (Delivered)
         self.orders_frame = ctk.CTkFrame(self)
         self.orders_frame.pack(fill="x", expand=False, padx=10, pady=10, side="bottom")
@@ -616,6 +635,11 @@ class HistoryFrame(ctk.CTkFrame):
         for ex in self.db.get_expenses("Kuru Meyve"):
             self.tree_fruit.insert("", "end", values=(ex['id'], ex['created_at'], ex['description'], f"{ex['amount']} TL"))
             
+        # Populate General Expenses
+        for item in self.tree_gen.get_children(): self.tree_gen.delete(item)
+        for ex in self.db.get_expenses("Genel"):
+            self.tree_gen.insert("", "end", values=(ex['id'], ex['created_at'], ex['description'], f"{ex['amount']} TL"))
+
         # Populate Delivered Orders
         for item in self.tree_orders.get_children(): self.tree_orders.delete(item)
         orders = self.db.get_orders("Delivered")
