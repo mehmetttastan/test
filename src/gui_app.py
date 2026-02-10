@@ -501,71 +501,67 @@ class HistoryFrame(ctk.CTkFrame):
         self.btn_add_expense = ctk.CTkButton(self.act_frame, text="Gider Ekle", command=self.open_expense_popup, fg_color="#D35B58")
         self.btn_add_expense.pack(side="left", padx=10, pady=10)
 
-        # Split Frame
-        self.split_frame = ctk.CTkFrame(self)
-        self.split_frame.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        # Left: Kahve Tablosu
-        self.left_frame = ctk.CTkFrame(self.split_frame)
-        self.left_frame.pack(side="left", fill="both", expand=True, padx=5)
-        
-        h_coffee = ctk.CTkFrame(self.left_frame, fg_color="transparent")
-        h_coffee.pack(fill="x", pady=5)
-        ctk.CTkLabel(h_coffee, text="KAHVE GİDERLERİ", font=("Arial", 14, "bold")).pack(side="left", padx=5)
-        ctk.CTkButton(h_coffee, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_coffee), width=100, fg_color="#D35B58", height=25).pack(side="right", padx=5)
+        # EXPENSE TABS
+        self.expense_tabs = ctk.CTkTabview(self, height=250)
+        self.expense_tabs.pack(fill="x", padx=10, pady=5)
 
+        self.expense_tabs.add("Kahve Giderleri")
+        self.expense_tabs.add("Meyve Giderleri")
+        self.expense_tabs.add("Genel Giderler")
+        
         cols = ("id", "date", "desc", "amount")
-        self.tree_coffee = ttk.Treeview(self.left_frame, columns=cols, show="headings")
+        
+        # 1. Kahve Tab
+        tab_coffee = self.expense_tabs.tab("Kahve Giderleri")
+        h_coffee = ctk.CTkFrame(tab_coffee, fg_color="transparent")
+        h_coffee.pack(fill="x", pady=2)
+        ctk.CTkButton(h_coffee, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_coffee), width=120, fg_color="#D35B58", height=25).pack(side="right")
+
+        self.tree_coffee = ttk.Treeview(tab_coffee, columns=cols, show="headings")
         self.tree_coffee.heading("id", text="ID")
         self.tree_coffee.heading("date", text="Tarih")
         self.tree_coffee.heading("desc", text="Açıklama")
         self.tree_coffee.heading("amount", text="Tutar")
         self.tree_coffee.column("id", width=30)
-        self.tree_coffee.column("date", width=80)
-        self.tree_coffee.column("amount", width=60)
-        self.tree_coffee.pack(fill="both", expand=True)
+        self.tree_coffee.column("date", width=120)
+        self.tree_coffee.column("amount", width=80)
+        self.tree_coffee.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # Right: Meyve Tablosu
-        self.right_frame = ctk.CTkFrame(self.split_frame)
-        self.right_frame.pack(side="right", fill="both", expand=True, padx=5)
-
-        h_fruit = ctk.CTkFrame(self.right_frame, fg_color="transparent")
-        h_fruit.pack(fill="x", pady=5)
-        ctk.CTkLabel(h_fruit, text="MEYVE GİDERLERİ", font=("Arial", 14, "bold")).pack(side="left", padx=5)
-        ctk.CTkButton(h_fruit, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_fruit), width=100, fg_color="#D35B58", height=25).pack(side="right", padx=5)
+        # 2. Fruit Tab
+        tab_fruit = self.expense_tabs.tab("Meyve Giderleri")
+        h_fruit = ctk.CTkFrame(tab_fruit, fg_color="transparent")
+        h_fruit.pack(fill="x", pady=2)
+        ctk.CTkButton(h_fruit, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_fruit), width=120, fg_color="#D35B58", height=25).pack(side="right")
         
-        self.tree_fruit = ttk.Treeview(self.right_frame, columns=cols, show="headings")
+        self.tree_fruit = ttk.Treeview(tab_fruit, columns=cols, show="headings")
         self.tree_fruit.heading("id", text="ID")
         self.tree_fruit.heading("date", text="Tarih")
         self.tree_fruit.heading("desc", text="Açıklama")
         self.tree_fruit.heading("amount", text="Tutar")
         self.tree_fruit.column("id", width=30)
-        self.tree_fruit.column("date", width=80)
-        self.tree_fruit.column("amount", width=60)
-        self.tree_fruit.pack(fill="both", expand=True)
-        
-        # General Expenses Table (New)
-        self.gen_expense_frame = ctk.CTkFrame(self)
-        self.gen_expense_frame.pack(fill="x", padx=10, pady=5)
+        self.tree_fruit.column("date", width=120)
+        self.tree_fruit.column("amount", width=80)
+        self.tree_fruit.pack(fill="both", expand=True, padx=5, pady=5)
 
-        h_gen = ctk.CTkFrame(self.gen_expense_frame, fg_color="transparent")
-        h_gen.pack(fill="x", pady=5)
-        ctk.CTkLabel(h_gen, text="GENEL GİDERLER", font=("Arial", 14, "bold")).pack(side="left", padx=5)
-        ctk.CTkButton(h_gen, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_gen), width=100, fg_color="#D35B58", height=25).pack(side="right", padx=5)
+        # 3. General Tab
+        tab_gen = self.expense_tabs.tab("Genel Giderler")
+        h_gen = ctk.CTkFrame(tab_gen, fg_color="transparent")
+        h_gen.pack(fill="x", pady=2)
+        ctk.CTkButton(h_gen, text="Seçili Gideri Sil", command=lambda: self.delete_expense(self.tree_gen), width=120, fg_color="#D35B58", height=25).pack(side="right")
 
-        self.tree_gen = ttk.Treeview(self.gen_expense_frame, columns=cols, show="headings", height=5)
+        self.tree_gen = ttk.Treeview(tab_gen, columns=cols, show="headings")
         self.tree_gen.heading("id", text="ID")
         self.tree_gen.heading("date", text="Tarih")
         self.tree_gen.heading("desc", text="Açıklama")
         self.tree_gen.heading("amount", text="Tutar")
         self.tree_gen.column("id", width=30)
-        self.tree_gen.column("date", width=80)
-        self.tree_gen.column("amount", width=60)
-        self.tree_gen.pack(fill="both", expand=True)
+        self.tree_gen.column("date", width=120)
+        self.tree_gen.column("amount", width=80)
+        self.tree_gen.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # General Orders List (Delivered)
+        # General Orders List (Delivered) - Now fills remaining space
         self.orders_frame = ctk.CTkFrame(self)
-        self.orders_frame.pack(fill="x", expand=False, padx=10, pady=10, side="bottom")
+        self.orders_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         h_frame = ctk.CTkFrame(self.orders_frame, fg_color="transparent")
         h_frame.pack(fill="x", pady=2)
