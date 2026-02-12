@@ -96,6 +96,18 @@ class DatabaseManager:
             )
         ''')
         
+        # --- MIGRATIONS ---
+        # Ensure 'coupon_code' and 'discount_amount' exist in 'orders' (for old DBs)
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN coupon_code TEXT")
+        except sqlite3.OperationalError:
+            pass # Column likely exists
+
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass # Column likely exists
+
         conn.commit()
         self._seed_data(cursor)
         conn.commit()
@@ -286,6 +298,63 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
+    def create_historical_order(self, customer_name, total_price, created_at, category_name="Diğer"):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO orders (customer_name, total_price, status, created_at, delivery_method)
+            VALUES (?, ?, 'Delivered', ?, 'Geçmiş Ekleme')
+        ''', (customer_name, total_price, created_at))
+
+        order_id = cursor.lastrowid
+
+        # Insert a dummy item to ensure it appears in category totals
+        cursor.execute('''
+            INSERT INTO order_items (order_id, product_name, category_name, quantity, price)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (order_id, "Manuel Giriş", category_name, 1, total_price))
+
+        conn.commit()
+        conn.close()
+
+    def update_order_details(self, order_id, customer_name, total_price, created_at):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE orders
+            SET customer_name=?, total_price=?, created_at=?
+            WHERE id=?
+        ''', (customer_name, total_price, created_at, order_id))
+        conn.commit()
+        conn.close()
+
+    def delete_order(self, order_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        # Delete items first (though FK cascade usually handles this if enabled, let's be explicit)
+        cursor.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
+        cursor.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+        conn.commit()
+        conn.close()
+
+    def get_product_sales_report(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT
+                oi.product_name,
+                SUM(oi.quantity) as total_qty,
+                SUM(oi.price * oi.quantity) as total_revenue
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status = 'Delivered'
+            GROUP BY oi.product_name
+            ORDER BY total_revenue DESC
+        ''')
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
     def get_total_income(self, category_filter=None):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -309,6 +378,13 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("INSERT INTO expenses (category_name, description, amount) VALUES (?, ?, ?)", (category_name, description, amount))
+        conn.commit()
+        conn.close()
+
+    def delete_expense(self, expense_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
         conn.commit()
         conn.close()
 
